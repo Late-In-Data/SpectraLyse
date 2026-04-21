@@ -1,0 +1,384 @@
+/* =========================================================
+   SpectraLab - Global Theme
+   Objectif :
+   - rendu scientifique premium
+   - sobre, lisible, moderne
+   - cartes propres, sidebar claire, plots intégrés
+========================================================= */
+
+/* =========================================================
+   GLOBAL
+========================================================= */
+
+html, body, [class*="css"] {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    background-color: #F7F9FC;
+    color: #1F2937;
+}
+
+/* Zone principale */
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 1500px;
+}
+
+/* Réduit un peu l'espace au-dessus */
+div[data-testid="stAppViewContainer"] > .main {
+    background-color: #F7F9FC;
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+section[data-testid="stSidebar"] {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
+}
+
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.4rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label {
+    color: #1F2937;
+}
+
+/* =========================================================
+   TYPOGRAPHIE
+========================================================= */
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+}
+
+h2 {
+    font-size: 1.55rem;
+    font-weight: 650;
+    color: #111827;
+    margin-top: 0.2rem;
+    margin-bottom: 0.3rem;
+}
+
+h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #111827;
+    margin-top: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-top: 0;
+    margin-bottom: 0.4rem;
+}
+
+p, li, label, span {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Sous-titres / captions */
+[data-testid="stCaptionContainer"] {
+    color: #6B7280;
+}
+
+/* =========================================================
+   HEADERS DE PAGE
+========================================================= */
+
+.page-header {
+    padding: 0.2rem 0 1rem 0;
+}
+
+.page-header h2 {
+    margin-bottom: 0.15rem;
+}
+
+.page-header p {
+    color: #6B7280;
+    margin-top: 0;
+}
+
+/* =========================================================
+   CARDS
+========================================================= */
+
+.card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    margin-bottom: 1rem;
+}
+
+.card p:last-child,
+.card ul:last-child,
+.card ol:last-child {
+    margin-bottom: 0;
+}
+
+/* Variante plus douce */
+.soft-card {
+    background: #FFFFFF;
+    border: 1px solid #EEF2F7;
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.035);
+    margin-bottom: 1rem;
+}
+
+/* =========================================================
+   KPI CARDS
+========================================================= */
+
+.kpi,
+.kpi-card {
+    background: linear-gradient(180deg, #FFFFFF 0%, #FBFDFF 100%);
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 1rem 0.8rem;
+    text-align: center;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+}
+
+.kpi-value,
+.kpi-card h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0F766E;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.kpi-label,
+.kpi-card p {
+    font-size: 0.83rem;
+    color: #6B7280;
+    margin-top: 0.45rem;
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   PLOTS
+========================================================= */
+
+.plot-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 0.8rem 0.9rem 0.2rem 0.9rem;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.045);
+    margin-bottom: 1rem;
+}
+
+/* Plotly container */
+.js-plotly-plot,
+.plotly,
+.plot-container {
+    border-radius: 14px;
+}
+
+/* =========================================================
+   BOUTONS
+========================================================= */
+
+.stButton > button {
+    border-radius: 10px;
+    border: 1px solid #D1D5DB;
+    background: #FFFFFF;
+    color: #111827;
+    font-weight: 600;
+    padding: 0.48rem 0.95rem;
+    transition: all 0.18s ease;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.stButton > button:hover {
+    border-color: #0F766E;
+    color: #0F766E;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.08);
+}
+
+.stDownloadButton > button {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.48rem 0.95rem;
+}
+
+/* =========================================================
+   INPUTS / SELECT / SLIDER
+========================================================= */
+
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div {
+    border-radius: 10px !important;
+    border-color: #D1D5DB !important;
+    background-color: #FFFFFF !important;
+}
+
+div[data-baseweb="select"] > div:hover,
+div[data-baseweb="input"] > div:hover,
+div[data-baseweb="textarea"] > div:hover {
+    border-color: #94A3B8 !important;
+}
+
+.stSlider [data-baseweb="slider"] {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+/* =========================================================
+   RADIO / CHECKBOX
+========================================================= */
+
+div[role="radiogroup"] label,
+div[data-testid="stCheckbox"] label {
+    font-size: 0.92rem;
+}
+
+/* =========================================================
+   EXPANDERS
+========================================================= */
+
+details {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 0.4rem 0.7rem;
+    margin-bottom: 0.8rem;
+}
+
+summary {
+    font-weight: 600;
+    color: #111827;
+    cursor: pointer;
+}
+
+/* =========================================================
+   DATAFRAMES / TABLES
+========================================================= */
+
+[data-testid="stDataFrame"] {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+}
+
+table {
+    border-collapse: collapse !important;
+}
+
+/* =========================================================
+   ALERTES STREAMLIT
+========================================================= */
+
+div[data-testid="stAlert"] {
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+}
+
+/* =========================================================
+   TABS
+========================================================= */
+
+button[data-baseweb="tab"] {
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: 600 !important;
+}
+
+/* =========================================================
+   METRICS
+========================================================= */
+
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    padding: 0.7rem 0.9rem;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
+}
+
+[data-testid="stMetricLabel"] {
+    color: #6B7280;
+    font-weight: 500;
+}
+
+[data-testid="stMetricValue"] {
+    color: #0F766E;
+    font-weight: 700;
+}
+
+/* =========================================================
+   FILE UPLOADER
+========================================================= */
+
+[data-testid="stFileUploader"] {
+    background: #FFFFFF;
+    border-radius: 14px;
+    border: 1px dashed #CBD5E1;
+    padding: 0.8rem;
+}
+
+/* =========================================================
+   DIVIDERS
+========================================================= */
+
+hr {
+    border: none;
+    border-top: 1px solid #E5E7EB;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+    .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    h1 {
+        font-size: 1.7rem;
+    }
+
+    h2 {
+        font-size: 1.35rem;
+    }
+
+    .card,
+    .plot-card,
+    .kpi,
+    .kpi-card {
+        border-radius: 14px;
+        padding: 0.9rem;
+    }
+}
