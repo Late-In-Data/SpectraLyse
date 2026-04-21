@@ -107,8 +107,8 @@ def main() -> None:
     elif page == "Documentation":
         render_documentation_page()
 
-    elif page == "Auteur & Contact":
-        render_author_page()
+    # elif page == "Auteur & Contact":
+    #     render_author_page()
 
 if __name__ == "__main__":
     main()
