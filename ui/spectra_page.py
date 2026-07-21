@@ -88,19 +88,6 @@ def get_numeric_like_columns(columns):
     return valid_cols, mapping
 
 
-def safe_for_display(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Rend un DataFrame plus robuste pour st.dataframe.
-    """
-    out = df.copy()
-    out.columns = [str(c) for c in out.columns]
-    out.index = [str(i) for i in out.index]
-    for col in out.columns:
-        if out[col].dtype == "object":
-            out[col] = out[col].astype(str)
-    return out
-
-
 # ============================================================
 # Filtre metadata
 # ============================================================
@@ -254,62 +241,6 @@ def plot_group_means(X: pd.DataFrame, meta: pd.DataFrame, group_col=None):
 
 
 # ============================================================
-# Stats simples
-# ============================================================
-def compute_zone_stats(X: pd.DataFrame) -> pd.DataFrame:
-    """
-    Découpe le domaine spectral en 3 zones et calcule moyenne / écart-type.
-    """
-    if X.shape[1] < 3:
-        return pd.DataFrame()
-
-    wl = np.array(infer_wavelength_values(list(X.columns)))
-
-    if len(wl) < 6:
-        return pd.DataFrame()
-
-    q1 = np.quantile(wl, 1 / 3)
-    q2 = np.quantile(wl, 2 / 3)
-
-    zones = [
-        ("Zone 1", wl.min(), q1),
-        ("Zone 2", q1, q2),
-        ("Zone 3", q2, wl.max()),
-    ]
-
-    rows = []
-    for label, a, b in zones:
-        mask = (wl >= a) & (wl <= b)
-        if mask.sum() == 0:
-            continue
-        values = X.iloc[:, mask].to_numpy(dtype=float)
-        rows.append(
-            {
-                "Zone": f"{label} ({a:.0f} - {b:.0f})",
-                "Moyenne": float(np.nanmean(values)),
-                "Écart-type": float(np.nanstd(values)),
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-def detect_simple_outliers(X: pd.DataFrame, z_threshold: float = 3.0):
-    """
-    Détection simple d'atypiques à partir de la distance au spectre moyen.
-    """
-    arr = X.to_numpy(dtype=float)
-    mean_spec = np.nanmean(arr, axis=0)
-    dist = np.linalg.norm(arr - mean_spec, axis=1)
-
-    if np.nanstd(dist) == 0:
-        return X.index[[]]
-
-    z = (dist - np.nanmean(dist)) / np.nanstd(dist)
-    return X.index[np.abs(z) > z_threshold]
-
-
-# ============================================================
 # Export
 # ============================================================
 def build_html_download(fig: go.Figure, file_name: str = "spectres_interactifs.html"):
@@ -432,43 +363,17 @@ def render_spectra_page():
     plot_card(fig_main)
 
     # --------------------------------------------------------
-    # Bloc secondaire
+    # Moyennes par groupe
     # --------------------------------------------------------
-    col_left, col_right = st.columns([2, 1], gap="large")
-
-    with col_left:
-        st.markdown("### Moyennes par groupe")
-        fig_group = plot_group_means(X_sub, meta_sub, color_col)
-        if fig_group is not None:
-            plot_card(fig_group)
-        else:
-            info_card(
-                "Moyennes par groupe",
-                "Choisissez une variable catégorielle dans 'Colorer par' pour afficher les spectres moyens par groupe."
-            )
-
-    with col_right:
-        st.markdown("### Statistiques par zone")
-        stats_df = compute_zone_stats(X_sub)
-
-        if not stats_df.empty:
-            st.dataframe(
-                safe_for_display(stats_df),
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.info("Pas assez de variables pour calculer les statistiques par zone.")
-
-        st.write("")
-
-        if st.button("Détecter les atypiques", use_container_width=True):
-            outliers = detect_simple_outliers(X_sub)
-            if len(outliers) == 0:
-                st.success("Aucun spectre atypique détecté avec ce critère simple.")
-            else:
-                st.warning(f"{len(outliers)} spectre(s) atypique(s) détecté(s).")
-                st.write(list(map(str, outliers[:20])))
+    st.markdown("### Moyennes par groupe")
+    fig_group = plot_group_means(X_sub, meta_sub, color_col)
+    if fig_group is not None:
+        plot_card(fig_group)
+    else:
+        info_card(
+            "Moyennes par groupe",
+            "Choisissez une variable catégorielle dans 'Colorer par' pour afficher les spectres moyens par groupe."
+        )
 
     # --------------------------------------------------------
     # Résumé

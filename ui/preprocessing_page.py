@@ -41,6 +41,21 @@ from components.layout import page_header
 from components.cards import plot_card
 from components.plotting import plot_spectra_figure
 
+
+# ============================================================
+# Calcul mis en cache (évite de recalculer le pipeline à chaque
+# interaction avec un widget qui ne change ni les données ni les
+# paramètres, par exemple changer la variable de couleur)
+# ============================================================
+@st.cache_data(show_spinner=False)
+def _cached_preprocess_pipeline(
+    X: pd.DataFrame,
+    steps: List[str],
+    params: Dict,
+) -> pd.DataFrame:
+    return preprocess_pipeline(X, steps, params) if steps else X.copy()
+
+
 # ============================================================
 # Données actives
 # ============================================================
@@ -249,10 +264,10 @@ def render_preprocessing_page() -> None:
         X_preview = X.loc[preview_idx].copy()
         meta_preview = meta.loc[preview_idx].copy() if meta is not None and not meta.empty else pd.DataFrame(index=X_preview.index)
 
-        # Calcul preview après
+        # Calcul preview après (mis en cache)
         try:
             validate_preprocessing_params(params, X_preview)
-            X_after_preview = preprocess_pipeline(X_preview, steps, params) if steps else X_preview.copy()
+            X_after_preview = _cached_preprocess_pipeline(X_preview, steps, params)
         except Exception as e:
             st.error(f"Erreur paramètres : {e}")
             return
@@ -330,7 +345,7 @@ def render_preprocessing_page() -> None:
     if apply_clicked:
         try:
             validate_preprocessing_params(params, X)
-            X_full_processed = preprocess_pipeline(X, steps, params) if steps else X.copy()
+            X_full_processed = _cached_preprocess_pipeline(X, steps, params)
 
             df_full = pd.concat([meta, X_full_processed], axis=1)
             st.session_state.processed_df = df_full

@@ -5,9 +5,15 @@ Génère un jeu de données NIRS synthétique pour la démo de SpectraLyse.
 Contexte simulé : essai agronomique sur blé.
 Facteurs : Variété (3), Fertilisation azotée (3), Irrigation (2), Bloc (5 répétitions).
 Cibles chimiques simulées : Protéine (%) et Humidité (%).
-Spectres : NIR 950-1650 nm (pas de 4 nm), avec effets physiques
-(diffusion multiplicative, offset additif, bruit) pour rendre les
-prétraitements (SNV/MSC) visuellement pertinents, + quelques atypiques.
+
+Objectif du design : que les facteurs agronomiques ressortent clairement en
+PCA (pour une démo pédagogique), avec des effets physiques (diffusion,
+offset) modérés pour rester réalistes sans noyer le signal.
+
+Colonnes fictives ajoutées avec valeurs manquantes (pour démontrer le
+nettoyage de données sur la page Import) :
+- Commentaire_Terrain : colonne entièrement vide (100% NA)
+- Capteur_Secondaire   : colonne partiellement renseignée (~35% NA)
 """
 
 import numpy as np
@@ -39,25 +45,26 @@ plan = pd.DataFrame(rows)
 n_samples = len(plan)  # 3*3*2*5 = 90
 
 # ------------------------------------------------------------
-# Cibles chimiques de référence (corrélées aux facteurs)
+# Cibles chimiques de référence (fortement corrélées aux facteurs
+# pour une démo pédagogique lisible)
 # ------------------------------------------------------------
-fert_effect = {"N0": -1.2, "N90": 0.0, "N180": 1.4}
-variete_effect_prot = {"Apache": -0.3, "Rubisko": 0.5, "Fructidor": 0.1}
-irrig_effect_humidite = {"Pluvial": -0.8, "Irrigué": 0.9}
-variete_effect_humidite = {"Apache": 0.2, "Rubisko": -0.1, "Fructidor": 0.0}
+fert_effect = {"N0": -2.6, "N90": 0.0, "N180": 3.0}
+variete_effect_prot = {"Apache": -0.4, "Rubisko": 0.6, "Fructidor": 0.1}
+irrig_effect_humidite = {"Pluvial": -2.2, "Irrigué": 2.4}
+variete_effect_humidite = {"Apache": 0.3, "Rubisko": -0.2, "Fructidor": 0.0}
 
 proteine = (
     11.5
     + plan["Fertilisation"].map(fert_effect)
     + plan["Variete"].map(variete_effect_prot)
-    + rng.normal(0, 0.35, n_samples)
+    + rng.normal(0, 0.25, n_samples)
 ).round(2)
 
 humidite = (
     12.0
     + plan["Irrigation"].map(irrig_effect_humidite)
     + plan["Variete"].map(variete_effect_humidite)
-    + rng.normal(0, 0.25, n_samples)
+    + rng.normal(0, 0.20, n_samples)
 ).round(2)
 
 plan["Proteine"] = proteine
@@ -82,51 +89,77 @@ baseline = (
     + 0.10 * np.exp(-0.5 * ((wavelengths - 1550) / 200) ** 2)
 )
 
-variete_shift = {"Apache": 0.00, "Rubisko": 0.01, "Fructidor": -0.01}
+# Signature spectrale distincte par variété : décalage global + bosse
+# large centrée sur une zone différente pour chaque variété (texture
+# structurelle, indépendante de la chimie), avec une amplitude nette.
+variete_signature = {
+    "Apache":    {"offset": -0.05, "center": 1050, "width": 60, "amp": 0.05},
+    "Rubisko":   {"offset": 0.04,  "center": 1300, "width": 60, "amp": -0.045},
+    "Fructidor": {"offset": 0.00,  "center": 1550, "width": 60, "amp": 0.05},
+}
+
+# Signature spectrale distincte par niveau de fertilisation : bande
+# d'identité centrée sur une zone dédiée (980 nm), séparée des bandes
+# variété et des bandes chimiques, pour bien isoler l'effet en PCA.
+fertilisation_signature = {
+    "N0":   {"center": 980, "width": 30, "amp": -0.05},
+    "N90":  {"center": 980, "width": 30, "amp": 0.0},
+    "N180": {"center": 980, "width": 30, "amp": 0.05},
+}
 
 spectra = np.zeros((n_samples, n_vars))
 
 for i, row in plan.iterrows():
     spec = baseline.copy()
 
-    # Décalage léger propre à la variété (structure fine du signal)
-    spec = spec + variete_shift[row["Variete"]]
+    sig = variete_signature[row["Variete"]]
+    spec = spec + sig["offset"]
+    spec += gaussian_band(wavelengths, center=sig["center"], width=sig["width"], amplitude=sig["amp"])
 
-    # Bande protéine (1er harmonique N-H, ~1200 nm) proportionnelle à la teneur
-    spec += gaussian_band(wavelengths, center=1200, width=25, amplitude=0.015 * row["Proteine"])
+    fert_sig = fertilisation_signature[row["Fertilisation"]]
+    spec += gaussian_band(wavelengths, center=fert_sig["center"], width=fert_sig["width"], amplitude=fert_sig["amp"])
 
-    # Bande humidité (1er harmonique O-H, ~1450 nm) proportionnelle à la teneur
-    spec += gaussian_band(wavelengths, center=1450, width=30, amplitude=0.02 * row["Humidite"])
+    # Bande protéine (1er harmonique N-H, ~1200 nm) — marquée par la fertilisation
+    spec += gaussian_band(wavelengths, center=1200, width=25, amplitude=0.035 * row["Proteine"])
 
-    # Effets physiques : diffusion multiplicative + offset additif (à corriger par SNV/MSC)
-    slope = rng.normal(1.0, 0.08)
-    intercept = rng.normal(0.0, 0.02)
+    # Bande humidité (1er harmonique O-H, ~1450 nm) — marquée par l'irrigation
+    spec += gaussian_band(wavelengths, center=1450, width=30, amplitude=0.045 * row["Humidite"])
+
+    # Effets physiques modérés : diffusion multiplicative + offset additif
+    # (volontairement réduits pour ne pas noyer le signal agronomique)
+    slope = rng.normal(1.0, 0.025)
+    intercept = rng.normal(0.0, 0.008)
     spec = spec * slope + intercept
 
     # Bruit instrumental
-    spec += rng.normal(0, 0.004, n_vars)
+    spec += rng.normal(0, 0.003, n_vars)
 
     spectra[i, :] = spec
-
-# Quelques échantillons atypiques (mesure défectueuse / contamination)
-outlier_idx = rng.choice(n_samples, size=3, replace=False)
-for idx in outlier_idx:
-    spectra[idx, :] = spectra[idx, :] * rng.normal(1.6, 0.05) + rng.normal(0.15, 0.02)
-    spectra[idx, :] += rng.normal(0, 0.02, n_vars)
 
 spectra_df = pd.DataFrame(spectra, columns=[str(w) for w in wavelengths])
 
 # ------------------------------------------------------------
-# Assemblage final
+# Assemblage + colonnes fictives avec NA (démo du nettoyage)
 # ------------------------------------------------------------
 demo_df = pd.concat([plan.reset_index(drop=True), spectra_df], axis=1)
+
+# Colonne entièrement vide -> doit être supprimée automatiquement
+demo_df["Commentaire_Terrain"] = np.nan
+
+# Colonne partiellement renseignée (~35% manquant) -> à traiter via une
+# stratégie de nettoyage (seuil de NA ou suppression de lignes)
+capteur = rng.normal(20, 2, n_samples).round(2)
+na_mask = rng.random(n_samples) < 0.35
+capteur = capteur.astype(object)
+capteur[na_mask] = np.nan
+demo_df["Capteur_Secondaire"] = capteur
+
 demo_df = demo_df.sample(frac=1.0, random_state=7).reset_index(drop=True)  # mélange des lignes
 
 output_path = "data/demo_ble_nirs.csv"
 demo_df.to_csv(output_path, index=False)
 
 print("Shape:", demo_df.shape)
-print("Colonnes non spectrales:", list(plan.columns))
-print("Atypiques injectés (index avant mélange):", sorted(outlier_idx.tolist()))
-print("Aperçu:")
-print(demo_df.iloc[:3, :10])
+print("Colonnes non spectrales:", [c for c in demo_df.columns if c not in spectra_df.columns])
+print("NA Commentaire_Terrain:", demo_df["Commentaire_Terrain"].isna().sum(), "/", n_samples)
+print("NA Capteur_Secondaire:", demo_df["Capteur_Secondaire"].isna().sum(), "/", n_samples)
