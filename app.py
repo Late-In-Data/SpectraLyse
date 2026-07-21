@@ -1,57 +1,36 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Apr 17 11:58:07 2026
-
-@author: late_jj
-"""
-
 # ============================================================
 # app.py
 # ============================================================
 """
-Application principale Streamlit pour l'analyse spectrale.
+Point d’entrée principal de l’application Streamlit.
 
-Rôle :
-- initialiser l'application
-- gérer la navigation
-- router vers les pages
-- gérer l'état global
+Responsabilités :
+- configurer Streamlit
+- initialiser le session_state
+- charger le style global
+- afficher la sidebar
+- router vers les pages UI
 
-Architecture :
-- UI séparée dans /ui
-- logique dans /core
-- utilitaires dans /utils
+Important :
+- st.set_page_config() doit être le premier appel Streamlit
+- les imports des pages sont faits dans main() pour éviter
+  les erreurs de type StreamlitSetPageConfigMustBeFirstCommandError
 """
 
 import streamlit as st
-# ============================================================
-# CONFIGURATION STREAMLIT
-# ============================================================
 
-# IMPORTANT :
-# set_page_config doit être le tout premier appel Streamlit
+# IMPORTANT : premier appel Streamlit de toute l'application
 st.set_page_config(
-    page_title="Spectral Analysis App",
-    page_icon="🔬",
+    page_title="SpectraLyse",
+    page_icon="assets/logo.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Import des pages APRES set_page_config
-from ui.import_page import render_import_page
-from ui.spectra_page import render_spectra_page
-from ui.preprocessing_page import render_preprocessing_page
-from ui.pca_page import render_pca_page
-
-# ============================================================
-# INITIALISATION SESSION STATE
-# ============================================================
-
-def init_session_state():
+def init_session_state() -> None:
     """
-    Initialise toutes les variables globales utilisées dans l'application.
+    Initialise les variables globales de session.
     """
-
     defaults = {
         "raw_df": None,
         "cleaned_df": None,
@@ -74,65 +53,43 @@ def init_session_state():
             st.session_state[key] = value
 
 
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-def render_sidebar():
+def render_placeholder_page(title: str, message: str) -> None:
     """
-    Affiche la sidebar avec navigation + état dataset.
+    Page temporaire en attendant les versions complètes.
     """
+    from components.layout import page_header
+    from components.cards import info_card
 
-    st.sidebar.title("🧭 Navigation")
-
-    page = st.sidebar.radio(
-        "Pages",
-        [
-            "Import",
-            "Spectres",
-            "Prétraitements",
-            "PCA",
-        ],
-    )
-
-    st.sidebar.divider()
-
-    st.sidebar.markdown("## 📊 Dataset")
-
-    if st.session_state.raw_df is None:
-        st.sidebar.info("Aucune donnée chargée")
-    else:
-        st.sidebar.success("Données chargées")
-
-        if st.session_state.cleaned_df is not None:
-            st.sidebar.write(
-                f"Clean: {st.session_state.cleaned_df.shape}"
-            )
-
-        if st.session_state.processed_df is not None:
-            st.sidebar.write("Prétraité ✔️")
-
-        st.sidebar.write(f"X: {len(st.session_state.x_columns)}")
-        st.sidebar.write(f"Meta: {len(st.session_state.meta_columns)}")
-
-    return page
+    page_header(title, message)
+    info_card("Page en construction", message)
 
 
-# ============================================================
-# ROUTING
-# ============================================================
-
-def main():
+def main() -> None:
     """
-    Fonction principale.
+    Fonction principale de l'application.
     """
+    # Imports ici pour éviter les appels Streamlit prématurés
+    from components.layout import load_css
+    from components.sidebar import render_sidebar
+
+    from ui.home_page import render_home_page
+    from ui.import_page import render_import_page
+    from ui.spectra_page import render_spectra_page
+    from ui.preprocessing_page import render_preprocessing_page
+    from ui.pca_page import render_pca_page
+    from ui.documentation_page import render_documentation_page
+    from ui.author_page import render_author_page
+    from ui.export_page import render_export_page
 
     init_session_state()
+    load_css()
 
     page = render_sidebar()
 
-    # Routing vers les pages
-    if page == "Import":
+    if page == "Accueil":
+        render_home_page()
+
+    elif page == "Import":
         render_import_page()
 
     elif page == "Spectres":
@@ -143,14 +100,15 @@ def main():
 
     elif page == "PCA":
         render_pca_page()
+    
+    elif page == "Export":
+        render_export_page()
 
+    elif page == "Documentation":
+        render_documentation_page()
 
-# ============================================================
-# EXECUTION
-# ============================================================
+    # elif page == "Auteur & Contact":
+    #     render_author_page()
 
 if __name__ == "__main__":
     main()
-    
-    
-    
