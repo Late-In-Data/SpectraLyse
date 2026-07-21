@@ -51,10 +51,20 @@ def load_data(file) -> pd.DataFrame:
     if file_name.endswith(".csv"):
         file.seek(0)
         try:
-            return pd.read_csv(file)
+            df = pd.read_csv(file)
         except Exception:
+            df = None
+
+        # pd.read_csv ne lève pas toujours d'exception sur un séparateur
+        # incorrect : un CSV en ';' lu avec le séparateur ',' par défaut
+        # est parfois accepté silencieusement comme une seule colonne.
+        # On retente avec ';' si le résultat n'a qu'une seule colonne
+        # alors que la première ligne en contient plusieurs.
+        if df is None or (df.shape[1] <= 1 and ";" in str(df.columns[0] if len(df.columns) else "")):
             file.seek(0)
-            return pd.read_csv(file, sep=";")
+            df = pd.read_csv(file, sep=";")
+
+        return df
 
     if file_name.endswith(".xlsx") or file_name.endswith(".xls"):
         file.seek(0)
