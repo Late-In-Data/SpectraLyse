@@ -1,2 +1,2 @@
-# VizNirsData
+# SpectraLyse
 

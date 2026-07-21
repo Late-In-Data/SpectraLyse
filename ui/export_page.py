@@ -215,7 +215,7 @@ def render_export_page() -> None:
         st.download_button(
             label="Télécharger tous les résultats (Excel)",
             data=all_bytes,
-            file_name="spectralab_exports.xlsx",
+            file_name="spectralyse_exports.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
