@@ -13,8 +13,6 @@ Module REDUCTION
 
 Responsabilités :
 - PCA
-- t-SNE
-- UMAP
 - préparation des données
 
 Aucune dépendance Streamlit.
@@ -24,15 +22,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
-
-# UMAP optionnel
-try:
-    import umap.umap_ as umap
-    UMAP_AVAILABLE = True
-except Exception:
-    UMAP_AVAILABLE = False
 
 
 # ============================================================
@@ -111,80 +101,6 @@ def compute_pca(
     })
 
     return scores_df, loadings_df, explained_df, pca
-
-
-# ============================================================
-# t-SNE
-# ============================================================
-
-def compute_tsne(
-    X: pd.DataFrame,
-    perplexity: float = 30,
-    learning_rate: float = 200,
-    random_state: int = 42
-):
-    """
-    Calcul t-SNE.
-    """
-
-    validate_X(X)
-
-    arr = StandardScaler().fit_transform(X.to_numpy(dtype=float))
-
-    perplexity = min(perplexity, X.shape[0] - 1)
-
-    tsne = TSNE(
-        n_components=2,
-        perplexity=perplexity,
-        learning_rate=learning_rate,
-        random_state=random_state,
-        init="pca"
-    )
-
-    embedding = tsne.fit_transform(arr)
-
-    return pd.DataFrame(
-        embedding,
-        columns=["tSNE1", "tSNE2"],
-        index=X.index
-    )
-
-
-# ============================================================
-# UMAP
-# ============================================================
-
-def compute_umap(
-    X: pd.DataFrame,
-    n_neighbors: int = 15,
-    min_dist: float = 0.1,
-    random_state: int = 42
-):
-    """
-    Calcul UMAP.
-    """
-
-    if not UMAP_AVAILABLE:
-        raise ImportError("UMAP non installé")
-
-    validate_X(X)
-
-    arr = StandardScaler().fit_transform(X.to_numpy(dtype=float))
-
-    reducer = umap.UMAP(
-        n_neighbors=n_neighbors,
-        min_dist=min_dist,
-        n_components=2,
-        random_state=random_state
-    )
-
-    embedding = reducer.fit_transform(arr)
-
-    return pd.DataFrame(
-        embedding,
-        columns=["UMAP1", "UMAP2"],
-        index=X.index
-    )
 
 
 # ============================================================
