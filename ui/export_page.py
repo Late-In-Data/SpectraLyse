@@ -255,7 +255,7 @@ def build_html_report(
     </div>
     """
 
-    html = f"""
+    report_html = f"""
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -429,7 +429,7 @@ def build_html_report(
 </body>
 </html>
 """
-    return html
+    return report_html
 
 
 # ============================================================
