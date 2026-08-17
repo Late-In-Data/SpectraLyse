@@ -16,6 +16,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
+# Palette qualitative (ColorBrewer "Paired", non fournie nativement par
+# Plotly Express) et échelle continue "Jet", utilisées partout dans
+# l'application pour une identité visuelle cohérente.
+QUALITATIVE_PALETTE = [
+    "#a6cee3", "#1f78b4", "#b2df8a", "#33a02c",
+    "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00",
+    "#cab2d6", "#6a3d9a", "#ffff99", "#b15928",
+]
+CONTINUOUS_COLORSCALE = "Jet"
+
 
 def infer_wavelength_values(columns: List[str]) -> List[float]:
     """
@@ -60,17 +70,13 @@ def build_line_colors(
         else:
             norm = (v - vmin) / (vmax - vmin)
 
-        colors = px.colors.sample_colorscale("Viridis", norm.tolist())
+        colors = px.colors.sample_colorscale(CONTINUOUS_COLORSCALE, norm.tolist())
         return colors, None, True
 
     # Couleur discrète si variable catégorielle
     cats = vals.astype(str).fillna("NA")
     unique = list(pd.unique(cats))
-    palette = (
-        px.colors.qualitative.Set2
-        + px.colors.qualitative.Safe
-        + px.colors.qualitative.Pastel
-    )
+    palette = QUALITATIVE_PALETTE
     cmap = {cat: palette[i % len(palette)] for i, cat in enumerate(unique)}
     colors = [cmap[val] for val in cats]
 
@@ -116,7 +122,7 @@ def plot_spectra_figure(
                 marker=dict(
                     size=0,
                     color=[vals.min(), vals.max()],
-                    colorscale="Viridis",
+                    colorscale=CONTINUOUS_COLORSCALE,
                     cmin=float(vals.min()),
                     cmax=float(vals.max()),
                     colorbar=dict(title=str(color_col)),

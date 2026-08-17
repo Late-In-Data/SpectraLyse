@@ -19,7 +19,6 @@ Responsabilités :
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import streamlit as st
 
 from components.layout import page_header
@@ -27,8 +26,8 @@ from components.cards import plot_card, info_card
 
 from components.plotting import (
     infer_wavelength_values,
-    build_line_colors,
     plot_spectra_figure,
+    QUALITATIVE_PALETTE,
 )
 
 # ============================================================
@@ -208,11 +207,7 @@ def plot_group_means(X: pd.DataFrame, meta: pd.DataFrame, group_col=None):
     x_vals = infer_wavelength_values(list(X.columns))
     fig = go.Figure()
 
-    palette = (
-        px.colors.qualitative.Set2
-        + px.colors.qualitative.Safe
-        + px.colors.qualitative.Pastel
-    )
+    palette = QUALITATIVE_PALETTE
 
     for i, grp in enumerate(pd.unique(tmp[group_col])):
         grp_df = tmp[tmp[group_col] == grp].drop(columns=[group_col])

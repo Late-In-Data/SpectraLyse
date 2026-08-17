@@ -22,7 +22,7 @@ Cette page est le point d’entrée principal du workflow.
 """
 
 import re
-from typing import Optional, Tuple, List
+from typing import Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -34,6 +34,7 @@ from core.data import (
     detect_spectral_columns,
     sort_columns_preserve_logic,
     missing_report,
+    quality_overview,
 )
 from components.layout import page_header
 from components.cards import kpi_card, info_card
@@ -77,16 +78,12 @@ def render_missing_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
     """
     Affiche le diagnostic des valeurs manquantes.
     """
-    report = missing_report(df)
-
-    total_na = int(df.isna().sum().sum())
-    pct_na = (
-        (total_na / (df.shape[0] * df.shape[1])) * 100
-        if df.shape[0] > 0 and df.shape[1] > 0
-        else 0.0
-    )
-    n_empty_cols = int(df.isna().all().sum())
-    n_rows_with_na = int(df.isna().any(axis=1).sum())
+    overview = quality_overview(df)
+    report = overview["report"]
+    total_na = overview["total_na"]
+    pct_na = overview["pct_na"]
+    n_empty_cols = overview["n_empty_cols"]
+    n_rows_with_na = overview["n_rows_with_na"]
 
     st.markdown("### Diagnostic des valeurs manquantes")
 
@@ -110,6 +107,7 @@ def render_missing_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
                 y="Colonne",
                 orientation="h",
                 title="Pourcentage de valeurs manquantes par colonne",
+                color_discrete_sequence=["#0F766E"],
             )
             fig.update_layout(
                 template="plotly_white",

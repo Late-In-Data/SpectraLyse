@@ -24,3 +24,6 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Références locales, non liées au projet
+inspiration/

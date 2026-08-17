@@ -156,3 +156,34 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
     }).sort_values("%", ascending=False)
 
     return report
+
+
+def quality_overview(df: pd.DataFrame) -> Dict[str, object]:
+    """
+    Diagnostic de qualité consolidé (valeurs manquantes, colonnes vides,
+    lignes impactées, doublons), utilisé à la fois par la page Import et
+    par le rapport HTML pour éviter que les deux calculs ne divergent.
+
+    Returns
+    -------
+    dict avec les clés :
+        report          : DataFrame (sortie de missing_report)
+        total_na        : int
+        pct_na          : float (non arrondi, % de cellules manquantes)
+        n_empty_cols    : int
+        n_rows_with_na  : int
+        n_duplicates    : int
+    """
+    report = missing_report(df)
+    total_na = int(df.isna().sum().sum())
+    n_cells = df.shape[0] * df.shape[1]
+    pct_na = (total_na / n_cells) * 100 if n_cells > 0 else 0.0
+
+    return {
+        "report": report,
+        "total_na": total_na,
+        "pct_na": pct_na,
+        "n_empty_cols": int(df.isna().all().sum()),
+        "n_rows_with_na": int(df.isna().any(axis=1).sum()),
+        "n_duplicates": int(df.duplicated().sum()),
+    }

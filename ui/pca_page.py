@@ -12,7 +12,6 @@ Objectif :
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -92,7 +91,7 @@ def plot_loadings(loadings_df, component):
         "Loading": loadings_df[component]
     })
 
-    fig = px.line(df, x="Variable", y="Loading")
+    fig = px.line(df, x="Variable", y="Loading", color_discrete_sequence=["#0F766E"])
 
     fig.update_layout(
         template="plotly_white",
@@ -166,7 +165,16 @@ def render_pca_page():
     with c3:
         color = st.selectbox("Couleur", [None] + list(df_plot.columns))
 
-    fig = px.scatter(df_plot, x=x, y=y, color=color)
+    # Un symbole par catégorie en plus de la couleur, pour rester lisible même
+    # en niveaux de gris ou en cas de daltonisme. Seulement si la variable est
+    # catégorielle : sur une variable continue, cela forcerait un symbole par
+    # valeur unique et casserait le dégradé continu de couleur.
+    symbol = (
+        color
+        if color is not None and not pd.api.types.is_numeric_dtype(df_plot[color])
+        else None
+    )
+    fig = px.scatter(df_plot, x=x, y=y, color=color, symbol=symbol)
 
     plot_card(fig)
 

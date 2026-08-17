@@ -27,6 +27,17 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Importer Streamlit change le thème Plotly par défaut ("streamlit"), dont la
+# palette de couleurs discrètes est cassée (couleurs quasi noires générées
+# automatiquement). On fixe donc explicitement un thème et des palettes
+# corrects une fois pour toutes, plutôt que de le refaire à chaque graphique.
+import plotly.express as px
+from components.plotting import QUALITATIVE_PALETTE, CONTINUOUS_COLORSCALE
+
+px.defaults.template = "plotly_white"
+px.defaults.color_discrete_sequence = QUALITATIVE_PALETTE
+px.defaults.color_continuous_scale = CONTINUOUS_COLORSCALE
+
 def init_session_state() -> None:
     """
     Initialise les variables globales de session.

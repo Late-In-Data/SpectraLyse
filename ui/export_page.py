@@ -21,14 +21,20 @@ Objectif :
 import datetime as dt
 import html
 import io
+import platform
+import re
+from importlib import metadata as importlib_metadata
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-from core.data import missing_report
+from core.data import quality_overview
 from components.layout import page_header
 from components.cards import info_card
+from components.plotting import plot_spectra_figure
+from ui.pca_page import plot_variance
 
 
 # ============================================================
@@ -132,9 +138,9 @@ def build_pca_score_plot_html(
     meta_df: pd.DataFrame | None,
 ) -> str:
     """
-    Construit un score plot PCA interactif (PC1 vs PC2), léger et
-    autonome (Plotly chargé une seule fois via CDN, pas de duplication
-    de librairie -> rapport rapide à ouvrir).
+    Construit un score plot PCA interactif (PC1 vs PC2). Plotly est chargé
+    une seule fois, globalement, via `_plotly_cdn_script_tag()` dans le
+    <head> du rapport plutôt qu'ici.
     """
     if scores is None or scores.empty or scores.shape[1] < 2:
         return "<p class='muted'>Pas de résultats PCA disponibles pour la visualisation.</p>"
@@ -156,6 +162,7 @@ def build_pca_score_plot_html(
         x="PC1",
         y="PC2",
         color=color_col,
+        symbol=color_col,
         title=f"Score plot PCA (coloré par {color_col})" if color_col else "Score plot PCA",
     )
     fig.update_layout(
@@ -164,7 +171,101 @@ def build_pca_score_plot_html(
         margin=dict(l=20, r=20, t=50, b=20),
     )
 
-    return fig.to_html(full_html=False, include_plotlyjs="cdn")
+    return fig.to_html(full_html=False, include_plotlyjs=False)
+
+
+def _plotly_cdn_script_tag() -> str:
+    """
+    Balise <script> chargeant Plotly depuis le CDN, à placer une seule fois
+    dans le <head> du rapport. Tous les graphiques du rapport sont ensuite
+    construits avec include_plotlyjs=False : Plotly doit être disponible
+    avant le premier <script> qui appelle Plotly.newPlot(...), donc dans le
+    <head>, pas au milieu du corps du document (l'ordre des sections ne
+    garantit pas que le graphique "porteur" du CDN passe avant les autres).
+    """
+    import re
+
+    dummy_html = go.Figure().to_html(full_html=False, include_plotlyjs="cdn")
+    match = re.search(r"<script[^>]*cdn\.plot\.ly[^<]*</script>", dummy_html)
+    return match.group(0) if match else ""
+
+
+def build_pca_variance_plot_html(explained: pd.DataFrame | None) -> str:
+    """
+    Réutilise le graphique de variance expliquée de la page PCA.
+    """
+    if explained is None or explained.empty:
+        return "<p class='muted'>Pas de résultats PCA disponibles pour la visualisation.</p>"
+
+    fig = plot_variance(explained)
+    return fig.to_html(full_html=False, include_plotlyjs=False)
+
+
+def build_pca_loadings_plot_html(loadings: pd.DataFrame | None) -> str:
+    """
+    Loadings de toutes les composantes calculées, superposées sur un même
+    graphique (plus lisible qu'un tableau brut de chiffres pour un rapport
+    statique, où il n'y a pas de sélecteur de composante comme dans l'app).
+    """
+    if loadings is None or loadings.empty:
+        return "<p class='muted'>Pas de loadings disponibles pour la visualisation.</p>"
+
+    long_df = (
+        loadings
+        .reset_index()
+        .rename(columns={"index": "Variable"})
+        .melt(id_vars="Variable", var_name="Composante", value_name="Loading")
+    )
+    fig = px.line(long_df, x="Variable", y="Loading", color="Composante", title="Loadings PCA")
+    fig.update_layout(
+        template="plotly_white",
+        height=380,
+        margin=dict(l=20, r=20, t=50, b=20),
+    )
+    return fig.to_html(full_html=False, include_plotlyjs=False)
+
+
+def build_preprocessing_comparison_html(
+    cleaned_df: pd.DataFrame | None,
+    processed_df: pd.DataFrame | None,
+    x_cols: list[str],
+    meta_df: pd.DataFrame | None,
+    max_samples: int = 50,
+) -> str:
+    """
+    Comparaison visuelle avant/après prétraitement, sur un sous-échantillon
+    (séquentiel, pas aléatoire, pour que le rapport reste reproductible)
+    afin de garder le fichier léger.
+    """
+    if cleaned_df is None or processed_df is None or not x_cols:
+        return "<p class='muted'>Aucun prétraitement appliqué.</p>"
+
+    x_cols_present = [c for c in x_cols if c in cleaned_df.columns and c in processed_df.columns]
+    if not x_cols_present:
+        return "<p class='muted'>Colonnes spectrales indisponibles pour la comparaison.</p>"
+
+    idx = cleaned_df.index[:max_samples]
+    X_before = cleaned_df.loc[idx, x_cols_present].apply(pd.to_numeric, errors="coerce")
+    X_after = processed_df.loc[idx, x_cols_present].apply(pd.to_numeric, errors="coerce")
+    meta_sample = (
+        meta_df.loc[meta_df.index.intersection(idx)]
+        if meta_df is not None and not meta_df.empty
+        else None
+    )
+
+    fig_before = plot_spectra_figure(X_before, meta_sample, title="Avant prétraitement", height=340, opacity=0.4)
+    fig_after = plot_spectra_figure(X_after, meta_sample, title="Après prétraitement", height=340, opacity=0.4)
+
+    note = ""
+    if len(cleaned_df) > max_samples:
+        note = f"<p class='muted'>Aperçu limité à {max_samples} échantillon(s) sur {len(cleaned_df)}.</p>"
+
+    return (
+        "<div class='grid' style='grid-template-columns: 1fr 1fr;'>"
+        f"<div>{fig_before.to_html(full_html=False, include_plotlyjs=False)}</div>"
+        f"<div>{fig_after.to_html(full_html=False, include_plotlyjs=False)}</div>"
+        f"</div>{note}"
+    )
 
 
 # ============================================================
@@ -183,6 +284,9 @@ def build_html_report(
     loadings: pd.DataFrame | None,
     explained: pd.DataFrame | None,
     meta_df: pd.DataFrame | None = None,
+    project_name: str | None = None,
+    author: str | None = None,
+    notes: str | None = None,
 ) -> str:
     """
     Construit un rapport HTML autonome et léger de l'analyse SpectraLyse.
@@ -192,6 +296,11 @@ def build_html_report(
     sont tronqués à un nombre raisonnable de lignes.
     """
     generated_at = dt.datetime.now().strftime("%d/%m/%Y à %H:%M")
+    plotly_cdn_script = _plotly_cdn_script_tag()
+
+    project_name_safe = html.escape(project_name) if project_name else None
+    author_safe = html.escape(author) if author else None
+    notes_html = html.escape(notes).replace("\n", "<br>") if notes and notes.strip() else None
 
     def shape_text(df):
         if df is None:
@@ -206,17 +315,37 @@ def build_html_report(
     </div>
     """
 
+    def package_version(package: str) -> str:
+        try:
+            return importlib_metadata.version(package)
+        except importlib_metadata.PackageNotFoundError:
+            return "non détectée"
+
+    reproducibility_html = "".join(
+        metric(label, version)
+        for label, version in [
+            ("Python", platform.python_version()),
+            ("streamlit", package_version("streamlit")),
+            ("pandas", package_version("pandas")),
+            ("numpy", package_version("numpy")),
+            ("scipy", package_version("scipy")),
+            ("scikit-learn", package_version("scikit-learn")),
+            ("plotly", package_version("plotly")),
+        ]
+    )
+
     # --------------------------------------------------------
     # Qualité des données (sur le dataset le plus avancé disponible)
     # --------------------------------------------------------
     quality_ref = cleaned_df if cleaned_df is not None else raw_df
 
     if quality_ref is not None and not quality_ref.empty:
-        report = missing_report(quality_ref)
-        total_na = int(quality_ref.isna().sum().sum())
-        pct_na = round((total_na / (quality_ref.shape[0] * quality_ref.shape[1])) * 100, 2)
-        n_duplicates = int(quality_ref.duplicated().sum())
-        n_empty_cols = int(quality_ref.isna().all().sum())
+        overview = quality_overview(quality_ref)
+        report = overview["report"]
+        total_na = overview["total_na"]
+        pct_na = round(overview["pct_na"], 2)
+        n_duplicates = overview["n_duplicates"]
+        n_empty_cols = overview["n_empty_cols"]
         quality_score = round(max(0.0, 100 - pct_na - (5 if n_duplicates else 0)), 1)
         top_missing = report[report["Missing"] > 0].head(10)
         top_missing = top_missing.reset_index().rename(columns={"index": "Colonne", "%": "% manquant"})
@@ -241,7 +370,13 @@ def build_html_report(
         "<p class='muted'>Aucun paramètre enregistré.</p>"
     )
 
+    preprocess_comparison_html = build_preprocessing_comparison_html(
+        cleaned_df, processed_df, x_cols, meta_df,
+    )
+
     pca_plot_html = build_pca_score_plot_html(scores, meta_df)
+    pca_variance_plot_html = build_pca_variance_plot_html(explained)
+    pca_loadings_plot_html = build_pca_loadings_plot_html(loadings)
 
     pca_summary_html = ""
     if explained is not None and not explained.empty:
@@ -261,7 +396,7 @@ def build_html_report(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SpectraLyse — Rapport d'analyse</title>
+<title>{project_name_safe or "SpectraLyse"} — Rapport d'analyse</title>
 <style>
     :root {{
         --bg:#F7F9FC; --card:#FFFFFF; --text:#1F2937; --muted:#6B7280; --line:#E5E7EB;
@@ -295,13 +430,39 @@ def build_html_report(
     summary {{ cursor:pointer; font-weight:700; color:#0B4F49; }}
     pre {{ white-space:pre-wrap; word-break:break-word; background:#F8FAFC; border:1px solid var(--line); border-radius:10px; padding:12px; font-size:13px; }}
     footer {{ text-align:center; color:var(--muted); font-size:12px; padding:24px; }}
+
+    /* Impression / export PDF via le navigateur (Fichier → Imprimer) */
+    @media print {{
+        body {{ background: white; }}
+        main {{ max-width: 100%; }}
+        .toc {{ display: none; }}
+        header, .metric, .badge, .data-table th {{
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }}
+        .card, .metric, .plot-card, details {{
+            box-shadow: none;
+            page-break-inside: avoid;
+        }}
+        .table-wrapper {{ overflow-x: visible; }}
+        /* Les <details> fermés restent utiles à l'écran (pour explorer sans
+        surcharger la page), mais sur papier il n'y a pas d'interaction
+        possible : on force leur contenu visible à l'impression. */
+        details:not([open]) > *:not(summary) {{
+            display: block !important;
+        }}
+    }}
 </style>
+{plotly_cdn_script}
 </head>
 <body>
 
 <header>
-    <h1>SpectraLyse — Rapport d'analyse</h1>
-    <p>Généré le {generated_at} · Fichier actif : {html.escape(file_name) if file_name else "Non disponible"}</p>
+    <h1>SpectraLyse — {project_name_safe or "Rapport d'analyse"}</h1>
+    <p>
+        Généré le {generated_at} · Fichier actif : {html.escape(file_name) if file_name else "Non disponible"}
+        {" · Auteur : " + author_safe if author_safe else ""}
+    </p>
 </header>
 
 <main>
@@ -309,11 +470,13 @@ def build_html_report(
     <nav class="toc card">
         <strong>Sommaire</strong>
         <a href="#resume">Résumé</a>
+        <a href="#notes-auteur">Notes de l'auteur</a>
         <a href="#qualite">Qualité</a>
         <a href="#selection">Sélection</a>
         <a href="#pretraitement">Prétraitement</a>
         <a href="#pca">PCA</a>
         <a href="#apercu">Aperçu des données</a>
+        <a href="#reproductibilite">Reproductibilité</a>
         <a href="#notes">Notes</a>
     </nav>
 
@@ -330,6 +493,14 @@ def build_html_report(
             {metric("Métadonnées", len(meta_cols))}
             {metric("Étapes de prétraitement", len(preprocess_steps))}
         </div>
+    </section>
+
+    <section class="card" id="notes-auteur">
+        <div class="section-heading">
+            <h2><span class="section-icon">📝</span>Notes de l'auteur</h2>
+            <p class="section-subtitle">Observations et commentaires ajoutés avant la génération.</p>
+        </div>
+        <p>{notes_html or "<span class='muted'>Aucune note ajoutée.</span>"}</p>
     </section>
 
     <section class="card" id="qualite">
@@ -372,6 +543,7 @@ def build_html_report(
             <p class="section-subtitle">Pipeline et paramètres appliqués aux spectres.</p>
         </div>
         <div>{preprocess_steps_html}</div>
+        <div style="margin-top:16px;">{preprocess_comparison_html}</div>
         <details>
             <summary>Paramètres détaillés</summary>
             {preprocess_params_html}
@@ -385,6 +557,10 @@ def build_html_report(
         </div>
         {pca_summary_html}
         <div style="margin-top:16px;">{pca_plot_html}</div>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top:16px;">
+            <div>{pca_variance_plot_html}</div>
+            <div>{pca_loadings_plot_html}</div>
+        </div>
         <details>
             <summary>Tableau des scores PCA</summary>
             <div class="table-wrapper">{df_to_html_table(scores, max_rows=15)}</div>
@@ -408,6 +584,16 @@ def build_html_report(
             <summary>Dataset prétraité</summary>
             <div class="table-wrapper">{df_to_html_table(processed_df, max_rows=15)}</div>
         </details>
+    </section>
+
+    <section class="card" id="reproductibilite">
+        <div class="section-heading">
+            <h2><span class="section-icon">🔁</span>Reproductibilité</h2>
+            <p class="section-subtitle">Versions des bibliothèques utilisées pour générer ce rapport.</p>
+        </div>
+        <div class="grid">
+            {reproducibility_html}
+        </div>
     </section>
 
     <section class="card" id="notes">
@@ -513,6 +699,20 @@ def render_export_page() -> None:
     st.markdown("### Rapport HTML")
     st.caption("Rapport autonome et léger : Plotly n'est chargé qu'une fois, via CDN.")
 
+    conf_left, conf_right = st.columns([1.2, 1.8], gap="large")
+
+    with conf_left:
+        project_name = st.text_input("Nom du projet (optionnel)", value="")
+        author = st.text_input("Auteur (optionnel)", value="")
+
+    with conf_right:
+        notes = st.text_area(
+            "Notes & commentaires (optionnel)",
+            value="",
+            height=100,
+            placeholder="Observations, interprétations, conclusions...",
+        )
+
     meta_cols = st.session_state.get("meta_columns", [])
     source_df = processed_df if processed_df is not None else cleaned_df
     meta_df = (
@@ -534,12 +734,18 @@ def render_export_page() -> None:
         loadings=loadings,
         explained=explained,
         meta_df=meta_df,
+        project_name=project_name,
+        author=author,
+        notes=notes,
     )
+
+    report_slug = re.sub(r"[^a-z0-9]+", "_", project_name.strip().lower()).strip("_") if project_name.strip() else ""
+    report_filename = f"spectralyse_report_{report_slug}.html" if report_slug else "spectralyse_report.html"
 
     st.download_button(
         label="Télécharger le rapport HTML",
         data=report_html.encode("utf-8"),
-        file_name="spectralyse_report.html",
+        file_name=report_filename,
         mime="text/html",
         width="stretch",
     )

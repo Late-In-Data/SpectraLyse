@@ -15,6 +15,7 @@ from core.data import (
     detect_spectral_columns,
     sort_columns_preserve_logic,
     missing_report,
+    quality_overview,
 )
 
 
@@ -96,6 +97,47 @@ def test_missing_report_empty_dataframe():
 
     assert list(report.columns) == ["Missing", "%"]
     assert report.empty
+
+
+# ============================================================
+# quality_overview
+# ============================================================
+def test_quality_overview_basic_counts():
+    df = pd.DataFrame({
+        "a": [1, None, 3, None],
+        "b": [1, 2, 3, 4],
+        "c": [None, None, None, None],
+    })
+
+    overview = quality_overview(df)
+
+    assert overview["total_na"] == 6
+    assert overview["pct_na"] == pytest.approx((6 / 12) * 100)
+    assert overview["n_empty_cols"] == 1
+    # La colonne "c" est entièrement vide : elle rend TOUTES les lignes
+    # impactées, pas seulement celles où "a" a un NA.
+    assert overview["n_rows_with_na"] == 4
+    assert overview["n_duplicates"] == 0
+    assert list(overview["report"].columns) == ["Missing", "%"]
+
+
+def test_quality_overview_counts_duplicates():
+    df = pd.DataFrame({"a": [1, 1, 2], "b": [1, 1, 2]})
+
+    overview = quality_overview(df)
+
+    assert overview["n_duplicates"] == 1
+
+
+def test_quality_overview_empty_dataframe():
+    df = pd.DataFrame()
+    overview = quality_overview(df)
+
+    assert overview["total_na"] == 0
+    assert overview["pct_na"] == 0.0
+    assert overview["n_empty_cols"] == 0
+    assert overview["n_rows_with_na"] == 0
+    assert overview["n_duplicates"] == 0
 
 
 # ============================================================
