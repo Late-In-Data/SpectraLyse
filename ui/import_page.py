@@ -38,6 +38,8 @@ from core.data import (
 from components.layout import page_header
 from components.cards import kpi_card, info_card
 
+DEMO_DATASET_PATH = "data/demo_cereals_nirs.csv"
+
 
 # ============================================================
 # Helpers
@@ -114,12 +116,12 @@ def render_missing_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
                 height=420,
                 margin=dict(l=20, r=20, t=50, b=20),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("Aucune valeur manquante détectée.")
 
     with right:
-        st.dataframe(report, use_container_width=True, height=420)
+        st.dataframe(report, width="stretch", height=420)
 
     return report
 
@@ -184,7 +186,7 @@ def render_cleaned_summary(
         kpi_card("Métadonnées", len(meta_cols_clean))
 
     with st.expander("Aperçu des données nettoyées", expanded=False):
-        st.dataframe(df_clean.head(50), use_container_width=True)
+        st.dataframe(df_clean.head(50), width="stretch")
 
 
 # ============================================================
@@ -224,8 +226,21 @@ def select_columns_ui(df: pd.DataFrame) -> Tuple[List[str], List[str]]:
     # Mode Numérique
     # --------------------------------------------------------
     if mode == "Numérique":
-        st.caption("Mode Numérique : toutes les colonnes numériques sont proposées comme X.")
-        x_cols = numeric_cols.copy()
+        st.caption(
+            "Mode Numérique : colonnes numériques dont le nom est interprétable comme une "
+            "longueur d’onde. Les colonnes numériques non spectrales (ex. valeurs de "
+            "référence chimique comme la protéine ou l’humidité) sont exclues automatiquement, "
+            "car les mélanger aux spectres fausserait l’échelle et le tracé."
+        )
+        x_cols = [c for c in numeric_cols if c in spectral_map]
+
+        excluded_numeric = [c for c in numeric_cols if c not in spectral_map]
+        if excluded_numeric:
+            st.caption(
+                f"{len(excluded_numeric)} colonne(s) numérique(s) non spectrale(s) exclue(s) : "
+                + ", ".join(str(c) for c in excluded_numeric[:10])
+                + ("…" if len(excluded_numeric) > 10 else "")
+            )
 
         with st.expander("Voir / ajuster les colonnes numériques sélectionnées", expanded=True):
             x_cols = st.multiselect(
@@ -602,24 +617,46 @@ def render_import_page() -> None:
     # --------------------------------------------------------
     st.markdown("### Import du fichier")
 
-    uploaded_file = st.file_uploader(
-        "Importer un fichier CSV ou Excel",
-        type=["csv", "xlsx", "xls"],
-        help="Formats supportés : CSV, XLSX, XLS",
-    )
+    upload_col, demo_col = st.columns([2.4, 1.0], gap="large")
 
-    if uploaded_file is not None:
-        try:
-            df = load_data(uploaded_file)
-            st.session_state.raw_df = df.copy()
-            st.session_state.file_name = uploaded_file.name
-            st.success(f"Fichier chargé : {uploaded_file.name}")
-        except Exception as e:
-            st.error(f"Erreur lors du chargement : {e}")
-            return
+    with upload_col:
+        uploaded_file = st.file_uploader(
+            "Importer un fichier CSV ou Excel",
+            type=["csv", "xlsx", "xls"],
+            help="Formats supportés : CSV, XLSX, XLS",
+        )
+
+        if uploaded_file is not None:
+            try:
+                df = load_data(uploaded_file)
+                st.session_state.raw_df = df.copy()
+                st.session_state.file_name = uploaded_file.name
+                st.success(f"Fichier chargé : {uploaded_file.name}")
+            except Exception as e:
+                st.error(f"Erreur lors du chargement : {e}")
+                return
+
+    with demo_col:
+        st.markdown("**Pas de données sous la main ?**")
+        if st.button(
+            "Charger le jeu de données de démonstration",
+            width="stretch",
+        ):
+            try:
+                df = pd.read_csv(DEMO_DATASET_PATH)
+                st.session_state.raw_df = df.copy()
+                st.session_state.file_name = "demo_cereals_nirs.csv"
+                st.success("Jeu de données de démonstration chargé.")
+            except Exception as e:
+                st.error(f"Erreur lors du chargement de la démo : {e}")
+
+        st.caption(
+            "Spectres NIR réels d’orge, de maïs et de blé "
+            "(projet sensAIfood, CC BY 4.0 — voir data/SOURCE.md)."
+        )
 
     if st.session_state.get("raw_df") is None:
-        st.info("Veuillez importer un fichier pour commencer.")
+        st.info("Veuillez importer un fichier ou charger le jeu de données de démonstration pour commencer.")
         return
 
     df = st.session_state.raw_df.copy()
@@ -631,7 +668,7 @@ def render_import_page() -> None:
     render_dataset_summary(df)
 
     with st.expander("Aperçu des données brutes", expanded=False):
-        st.dataframe(df.head(50), use_container_width=True)
+        st.dataframe(df.head(50), width="stretch")
 
     # --------------------------------------------------------
     # Sélection colonnes
@@ -677,7 +714,7 @@ def render_import_page() -> None:
     val_left, val_right = st.columns([1.4, 1.0], gap="large")
 
     with val_left:
-        if st.button("Valider et figer le dataset", type="primary", use_container_width=True):
+        if st.button("Valider et figer le dataset", type="primary", width="stretch"):
             if not x_cols_clean:
                 st.error("Aucune colonne spectrale valide n’a été sélectionnée.")
                 return

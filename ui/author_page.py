@@ -11,25 +11,9 @@ Objectif :
 - rediriger les retours vers Google Form / LinkedIn / email
 """
 
-import os
 import streamlit as st
 
 from components.layout import page_header
-
-
-def render_profile_image(image_path="assets/profile.png"):
-    if os.path.exists(image_path):
-        st.image(image_path)
-    else:
-        st.markdown(
-            """
-<div class="card" style="text-align:center;">
-    <h2>👤</h2>
-    <p>Ajoutez votre photo dans <code>assets/profile.png</code></p>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
 
 
 def render_author_page() -> None:
@@ -40,36 +24,24 @@ def render_author_page() -> None:
     # --------------------------------------------------------
     st.markdown("### Auteur")
 
-    a1, a2 = st.columns([1, 2], gap="large")
-
-    with a1:
-        render_profile_image("assets/profile.png")
-
-    with a2:
-        st.markdown(
-            """
+    st.markdown(
+        """
 <div class="card">
     <h3>Laté LAWSON</h3>
-    <p><strong>Data Scientist & Chimiométricien</strong></p>
+    <p><strong>Data Scientist</strong></p>
     <p>
-        Je travaille à l’interface entre la data science, la chimiométrie
-        et l’analyse spectrale, avec un intérêt particulier pour la
-        valorisation de données complexes issues d’environnements
-        analytiques et expérimentaux.
+        Je travaille sur l’ensemble du cycle de la donnée — exploration, préparation,
+        modélisation et visualisation interactive — avec un souci de rendre ces analyses
+        accessibles et exploitables.
     </p>
     <p>
-        Mon objectif est de développer des outils robustes, lisibles et
-        utiles pour l’exploration de données, le prétraitement spectral,
-        l’analyse multivariée et l’aide à l’interprétation scientifique.
-    </p>
-    <p>
-        Domaines d’intérêt : chimiométrie, spectroscopie, analyse multivariée,
-        modélisation de données et développement d’applications scientifiques.
+        Ce projet illustre cette approche sur un cas concret : l’analyse de données
+        spectrales (chimiométrie).
     </p>
 </div>
 """,
-            unsafe_allow_html=True,
-        )
+        unsafe_allow_html=True,
+    )
 
     # --------------------------------------------------------
     # Contact

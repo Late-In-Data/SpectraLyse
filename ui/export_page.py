@@ -19,6 +19,7 @@ Objectif :
 """
 
 import datetime as dt
+import html
 import io
 
 import pandas as pd
@@ -74,7 +75,7 @@ def render_export_block(title: str, df: pd.DataFrame, file_stub: str) -> None:
             data=dataframe_to_csv_bytes(df),
             file_name=f"{file_stub}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     with c2:
@@ -84,11 +85,11 @@ def render_export_block(title: str, df: pd.DataFrame, file_stub: str) -> None:
             data=xlsx_bytes,
             file_name=f"{file_stub}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
 
     with st.expander("Aperçu"):
-        st.dataframe(df.head(30), use_container_width=True)
+        st.dataframe(df.head(30), width="stretch")
 
 
 # ============================================================
@@ -102,7 +103,7 @@ def preview_list_html(items, max_items: int = 25) -> str:
         return "<p class='muted'>Aucune</p>"
 
     shown = items[:max_items]
-    lis = "".join(f"<li>{str(x)}</li>" for x in shown)
+    lis = "".join(f"<li>{html.escape(str(x))}</li>" for x in shown)
 
     extra = ""
     if len(items) > max_items:
@@ -122,7 +123,7 @@ def df_to_html_table(df: pd.DataFrame | None, max_rows: int = 20) -> str:
         index=True,
         classes="data-table",
         border=0,
-        escape=False,
+        escape=True,
     )
 
 
@@ -300,7 +301,7 @@ def build_html_report(
 
 <header>
     <h1>SpectraLyse — Rapport d'analyse</h1>
-    <p>Généré le {generated_at} · Fichier actif : {file_name or "Non disponible"}</p>
+    <p>Généré le {generated_at} · Fichier actif : {html.escape(file_name) if file_name else "Non disponible"}</p>
 </header>
 
 <main>
@@ -540,7 +541,7 @@ def render_export_page() -> None:
         data=report_html.encode("utf-8"),
         file_name="spectralyse_report.html",
         mime="text/html",
-        use_container_width=True,
+        width="stretch",
     )
 
     # --------------------------------------------------------
@@ -570,7 +571,7 @@ def render_export_page() -> None:
             data=all_bytes,
             file_name="spectralyse_exports.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.info("Aucun contenu disponible pour un export global.")

@@ -223,7 +223,7 @@ def render_preprocessing_page() -> None:
         st.write("")
         st.markdown("### Application")
 
-        apply_clicked = st.button("Appliquer", type="primary", use_container_width=True)
+        apply_clicked = st.button("Appliquer", type="primary", width="stretch")
 
         if steps:
             st.write("")

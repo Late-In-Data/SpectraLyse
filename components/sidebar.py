@@ -14,6 +14,8 @@ Responsabilités :
 import os
 import streamlit as st
 
+from core.version import APP_VERSION
+
 
 def render_sidebar() -> str:
     """
@@ -36,7 +38,7 @@ def render_sidebar() -> str:
     # Branding
     # --------------------------------------------------------
     if os.path.exists("assets/logo.png"):
-        st.sidebar.image("assets/logo.png", use_container_width=True)
+        st.sidebar.image("assets/logo.png", width="stretch")
 
     st.sidebar.markdown("### Navigation")
 
@@ -93,6 +95,6 @@ def render_sidebar() -> str:
             st.sidebar.write("**Prétraitement :** non appliqué")
 
     st.sidebar.markdown("---")
-    st.sidebar.caption("SpectraLyse • v0.1")
+    st.sidebar.caption(f"SpectraLyse • v{APP_VERSION}")
 
     return selected_page

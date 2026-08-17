@@ -53,17 +53,6 @@ def init_session_state() -> None:
             st.session_state[key] = value
 
 
-def render_placeholder_page(title: str, message: str) -> None:
-    """
-    Page temporaire en attendant les versions complètes.
-    """
-    from components.layout import page_header
-    from components.cards import info_card
-
-    page_header(title, message)
-    info_card("Page en construction", message)
-
-
 def main() -> None:
     """
     Fonction principale de l'application.

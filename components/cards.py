@@ -48,5 +48,5 @@ def plot_card(fig) -> None:
     Affiche une figure Plotly dans une carte visuelle.
     """
     st.markdown('<div class="plot-card">', unsafe_allow_html=True)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)

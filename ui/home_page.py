@@ -1,21 +1,21 @@
-# # ============================================================
-# # ui/home_page.py
-# # ============================================================
+# ============================================================
+# ui/home_page.py
+# ============================================================
+"""
+Page ACCUEIL - version vitrine / orientation
 
-# """
-# Page ACCUEIL - version vitrine / orientation
-
-# Objectif :
-# - présenter SpectraLyse
-# - montrer les fonctionnalités clés
-# - illustrer le workflow utilisateur
-# - afficher quelques visuels d'exemple
-# - éviter de dupliquer la logique de la page Import
-# """
+Objectif :
+- présenter SpectraLyse
+- montrer les fonctionnalités clés
+- illustrer le workflow utilisateur
+- afficher quelques visuels d'exemple
+- éviter de dupliquer la logique de la page Import
+"""
 
 import streamlit as st
 from components.layout import page_header
 from components.cards import info_card
+from core.version import APP_VERSION
 
 def render_feature_card(title: str, description: str, icon: str = "🔹"):
     st.markdown(
@@ -72,7 +72,7 @@ def render_home_page():
 
     i1, i2, i3 = st.columns(3, gap="large")
     with i1:
-        info_card("Version", "v0.1")
+        info_card("Version", f"v{APP_VERSION}")
     with i2:
         info_card("Statut", "Application en développement actif")
     with i3:
