@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 from core.reduction import compute_pca, pca_summary
 from components.layout import page_header
 from components.cards import plot_card, info_card
+from components.report_basket import add_figure_to_report
 
 
 # ============================================================
@@ -154,7 +155,7 @@ def render_pca_page():
     # --------------------------------------------------------
     st.markdown("### Score Plot")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
 
     with c1:
         x = st.selectbox("X", scores.columns)
@@ -163,20 +164,37 @@ def render_pca_page():
         y = st.selectbox("Y", scores.columns, index=1)
 
     with c3:
-        color = st.selectbox("Couleur", [None] + list(df_plot.columns))
+        color = st.selectbox("Couleur", [None] + list(df_plot.columns), key="pca_color")
 
-    # Un symbole par catégorie en plus de la couleur, pour rester lisible même
-    # en niveaux de gris ou en cas de daltonisme. Seulement si la variable est
-    # catégorielle : sur une variable continue, cela forcerait un symbole par
-    # valeur unique et casserait le dégradé continu de couleur.
+    with c4:
+        symbol_col = st.selectbox("Symboles", [None] + list(df_plot.columns), key="pca_symbol")
+
+    # Un symbole par catégorie, indépendant de la couleur (comme hue/style en
+    # seaborn) — sauf si la variable choisie est continue : ça forcerait un
+    # symbole par valeur unique et casserait le rendu.
     symbol = (
-        color
-        if color is not None and not pd.api.types.is_numeric_dtype(df_plot[color])
+        symbol_col
+        if symbol_col is not None and not pd.api.types.is_numeric_dtype(df_plot[symbol_col])
         else None
     )
     fig = px.scatter(df_plot, x=x, y=y, color=color, symbol=symbol)
 
     plot_card(fig)
+
+    label_bits = [f"X={x}", f"Y={y}"]
+    if color is not None:
+        label_bits.append(f"couleur={color}")
+    if symbol is not None:
+        label_bits.append(f"symboles={symbol}")
+    score_plot_label = "Score plot PCA (" + ", ".join(label_bits) + ")"
+
+    if st.button("Ajouter ce score plot au rapport", key="add_report_pca_score"):
+        add_figure_to_report(
+            "pca",
+            score_plot_label,
+            fig.to_html(full_html=False, include_plotlyjs=False),
+        )
+        st.success(f"Ajouté au rapport : {score_plot_label}")
 
     # --------------------------------------------------------
     # VARIANCE + LOADINGS

@@ -29,6 +29,7 @@ from components.plotting import (
     plot_spectra_figure,
     QUALITATIVE_PALETTE,
 )
+from components.report_basket import add_figure_to_report
 
 # ============================================================
 # Helpers dataset
@@ -357,6 +358,13 @@ def render_spectra_page():
 
     plot_card(fig_main)
 
+    main_label = "Spectres" + (f" (coloré par {color_col})" if color_col else "")
+    if st.button("Ajouter ce graphique au rapport", key="add_report_spectra_main"):
+        add_figure_to_report(
+            "spectres", main_label, fig_main.to_html(full_html=False, include_plotlyjs=False)
+        )
+        st.success(f"Ajouté au rapport : {main_label}")
+
     # --------------------------------------------------------
     # Moyennes par groupe
     # --------------------------------------------------------
@@ -364,6 +372,13 @@ def render_spectra_page():
     fig_group = plot_group_means(X_sub, meta_sub, color_col)
     if fig_group is not None:
         plot_card(fig_group)
+
+        group_label = f"Moyennes par groupe (coloré par {color_col})"
+        if st.button("Ajouter ce graphique au rapport", key="add_report_spectra_group"):
+            add_figure_to_report(
+                "spectres", group_label, fig_group.to_html(full_html=False, include_plotlyjs=False)
+            )
+            st.success(f"Ajouté au rapport : {group_label}")
     else:
         info_card(
             "Moyennes par groupe",

@@ -40,6 +40,7 @@ from core.preprocessing import (
 from components.layout import page_header
 from components.cards import plot_card
 from components.plotting import plot_spectra_figure
+from components.report_basket import add_figure_to_report
 
 
 # ============================================================
@@ -301,7 +302,21 @@ def render_preprocessing_page() -> None:
                 yaxis_title="Intensité / Absorbance",
             )
             plot_card(fig_after)
-        
+
+        pipeline_desc = " → ".join(build_pipeline_summary(steps, params)) if steps else "aucun prétraitement"
+        color_desc = f"coloré par {color_col}" if color_col else "sans coloration"
+        comparison_label = f"Avant/après ({pipeline_desc}) — {color_desc}"
+
+        if st.button("Ajouter cette comparaison au rapport", key="add_report_preprocessing"):
+            combined_html = (
+                "<div class='grid' style='grid-template-columns: 1fr 1fr;'>"
+                f"<div>{fig_before.to_html(full_html=False, include_plotlyjs=False)}</div>"
+                f"<div>{fig_after.to_html(full_html=False, include_plotlyjs=False)}</div>"
+                "</div>"
+            )
+            add_figure_to_report("pretraitement", comparison_label, combined_html)
+            st.success(f"Ajouté au rapport : {comparison_label}")
+
         st.markdown("### Résumé de l’aperçu")
         r1, r2, r3 = st.columns(3)
         with r1:

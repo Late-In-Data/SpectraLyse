@@ -57,6 +57,7 @@ def init_session_state() -> None:
         },
         "reduction_results": {},
         "file_name": None,
+        "report_figures": [],
     }
 
     for key, value in defaults.items():

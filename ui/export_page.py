@@ -34,6 +34,7 @@ from core.data import quality_overview
 from components.layout import page_header
 from components.cards import info_card
 from components.plotting import plot_spectra_figure
+from components.report_basket import render_basket_summary
 from ui.pca_page import plot_variance
 
 
@@ -139,7 +140,7 @@ def build_pca_score_plot_html(
 ) -> str:
     """
     Construit un score plot PCA interactif (PC1 vs PC2). Plotly est chargé
-    une seule fois, globalement, via `_plotly_cdn_script_tag()` dans le
+    une seule fois, globalement, via `_plotly_inline_scripts()` dans le
     <head> du rapport plutôt qu'ici.
     """
     if scores is None or scores.empty or scores.shape[1] < 2:
@@ -174,20 +175,24 @@ def build_pca_score_plot_html(
     return fig.to_html(full_html=False, include_plotlyjs=False)
 
 
-def _plotly_cdn_script_tag() -> str:
+def _plotly_inline_scripts() -> str:
     """
-    Balise <script> chargeant Plotly depuis le CDN, à placer une seule fois
-    dans le <head> du rapport. Tous les graphiques du rapport sont ensuite
+    Balises <script> chargeant Plotly, à placer une seule fois dans le
+    <head> du rapport. Tous les graphiques du rapport sont ensuite
     construits avec include_plotlyjs=False : Plotly doit être disponible
     avant le premier <script> qui appelle Plotly.newPlot(...), donc dans le
-    <head>, pas au milieu du corps du document (l'ordre des sections ne
-    garantit pas que le graphique "porteur" du CDN passe avant les autres).
-    """
-    import re
+    <head>, pas au milieu du corps du document.
 
-    dummy_html = go.Figure().to_html(full_html=False, include_plotlyjs="cdn")
-    match = re.search(r"<script[^>]*cdn\.plot\.ly[^<]*</script>", dummy_html)
-    return match.group(0) if match else ""
+    La librairie est embarquée directement dans le fichier (pas de CDN) :
+    le rapport doit s'ouvrir et s'afficher correctement même sans connexion
+    internet, ce qui n'est pas garanti avec un chargement externe. Le fichier
+    est plus volumineux (quelques Mo de plus), mais reste un simple
+    téléchargement ponctuel, pas une page consultée à répétition.
+    """
+    dummy_html = go.Figure().to_html(full_html=False, include_plotlyjs=True)
+    setup_prefix = dummy_html[: dummy_html.find("<div id=")]
+    scripts = re.findall(r"<script.*?</script>", setup_prefix, re.S)
+    return "".join(scripts)
 
 
 def build_pca_variance_plot_html(explained: pd.DataFrame | None) -> str:
@@ -223,6 +228,23 @@ def build_pca_loadings_plot_html(loadings: pd.DataFrame | None) -> str:
         margin=dict(l=20, r=20, t=50, b=20),
     )
     return fig.to_html(full_html=False, include_plotlyjs=False)
+
+
+def render_saved_figures_html(entries: list[dict]) -> str:
+    """
+    Affiche une série de figures explicitement ajoutées au rapport par
+    l'utilisateur (voir components/report_basket.py), chacune avec son
+    étiquette de configuration (couleur, symbole, pipeline...).
+    """
+    blocks = []
+    for entry in entries:
+        blocks.append(
+            f"<div style='margin-top:16px;'>"
+            f"<p class='muted'><strong>{html.escape(entry['label'])}</strong></p>"
+            f"{entry['html']}"
+            f"</div>"
+        )
+    return "".join(blocks)
 
 
 def build_preprocessing_comparison_html(
@@ -287,6 +309,7 @@ def build_html_report(
     project_name: str | None = None,
     author: str | None = None,
     notes: str | None = None,
+    report_figures: list[dict] | None = None,
 ) -> str:
     """
     Construit un rapport HTML autonome et léger de l'analyse SpectraLyse.
@@ -296,7 +319,7 @@ def build_html_report(
     sont tronqués à un nombre raisonnable de lignes.
     """
     generated_at = dt.datetime.now().strftime("%d/%m/%Y à %H:%M")
-    plotly_cdn_script = _plotly_cdn_script_tag()
+    plotly_inline_scripts = _plotly_inline_scripts()
 
     project_name_safe = html.escape(project_name) if project_name else None
     author_safe = html.escape(author) if author else None
@@ -370,13 +393,40 @@ def build_html_report(
         "<p class='muted'>Aucun paramètre enregistré.</p>"
     )
 
-    preprocess_comparison_html = build_preprocessing_comparison_html(
-        cleaned_df, processed_df, x_cols, meta_df,
+    report_figures = report_figures or []
+    saved_pca = [f for f in report_figures if f["section"] == "pca"]
+    saved_pretraitement = [f for f in report_figures if f["section"] == "pretraitement"]
+    saved_spectres = [f for f in report_figures if f["section"] == "spectres"]
+
+    # Les figures explicitement ajoutées par l'utilisateur (configurées comme
+    # il le souhaite) remplacent la figure automatique par défaut, plutôt que
+    # de s'y ajouter -> pas de doublon quand l'utilisateur a pris le temps de
+    # choisir sa configuration.
+    preprocess_comparison_html = (
+        render_saved_figures_html(saved_pretraitement)
+        if saved_pretraitement else
+        build_preprocessing_comparison_html(cleaned_df, processed_df, x_cols, meta_df)
     )
 
-    pca_plot_html = build_pca_score_plot_html(scores, meta_df)
+    pca_plot_html = (
+        render_saved_figures_html(saved_pca)
+        if saved_pca else
+        build_pca_score_plot_html(scores, meta_df)
+    )
     pca_variance_plot_html = build_pca_variance_plot_html(explained)
     pca_loadings_plot_html = build_pca_loadings_plot_html(loadings)
+
+    spectres_html = render_saved_figures_html(saved_spectres)
+    spectres_nav_link = '<a href="#spectres">Spectres</a>' if saved_spectres else ""
+    spectres_section_html = f"""
+    <section class="card" id="spectres">
+        <div class="section-heading">
+            <h2><span class="section-icon">📈</span>Spectres</h2>
+            <p class="section-subtitle">Graphiques ajoutés manuellement depuis la page Spectres.</p>
+        </div>
+        {spectres_html}
+    </section>
+    """ if saved_spectres else ""
 
     pca_summary_html = ""
     if explained is not None and not explained.empty:
@@ -453,7 +503,7 @@ def build_html_report(
         }}
     }}
 </style>
-{plotly_cdn_script}
+{plotly_inline_scripts}
 </head>
 <body>
 
@@ -473,6 +523,7 @@ def build_html_report(
         <a href="#notes-auteur">Notes de l'auteur</a>
         <a href="#qualite">Qualité</a>
         <a href="#selection">Sélection</a>
+        {spectres_nav_link}
         <a href="#pretraitement">Prétraitement</a>
         <a href="#pca">PCA</a>
         <a href="#apercu">Aperçu des données</a>
@@ -536,6 +587,8 @@ def build_html_report(
             </div>
         </div>
     </section>
+
+    {spectres_section_html}
 
     <section class="card" id="pretraitement">
         <div class="section-heading">
@@ -694,10 +747,31 @@ def render_export_page() -> None:
         st.info("Aucun résultat PCA disponible pour l’export.")
 
     # --------------------------------------------------------
+    # Figures sauvegardées pour le rapport
+    # --------------------------------------------------------
+    st.markdown("### Figures pour le rapport")
+    st.caption(
+        "Configure un graphique comme tu veux (couleur, symbole, prétraitement) sur sa page, "
+        "puis clique sur « Ajouter au rapport ». Tu peux en sauvegarder plusieurs par section "
+        "pour comparer différentes configurations dans le rapport final."
+    )
+
+    fig_left, fig_mid, fig_right = st.columns(3)
+    with fig_left:
+        st.markdown("**PCA**")
+        render_basket_summary("pca", "PCA")
+    with fig_mid:
+        st.markdown("**Prétraitement**")
+        render_basket_summary("pretraitement", "Prétraitement")
+    with fig_right:
+        st.markdown("**Spectres**")
+        render_basket_summary("spectres", "Spectres")
+
+    # --------------------------------------------------------
     # Rapport HTML
     # --------------------------------------------------------
     st.markdown("### Rapport HTML")
-    st.caption("Rapport autonome et léger : Plotly n'est chargé qu'une fois, via CDN.")
+    st.caption("Rapport autonome et léger : Plotly n'est embarqué qu'une seule fois dans le fichier.")
 
     conf_left, conf_right = st.columns([1.2, 1.8], gap="large")
 
@@ -737,6 +811,7 @@ def render_export_page() -> None:
         project_name=project_name,
         author=author,
         notes=notes,
+        report_figures=st.session_state.get("report_figures", []),
     )
 
     report_slug = re.sub(r"[^a-z0-9]+", "_", project_name.strip().lower()).strip("_") if project_name.strip() else ""
